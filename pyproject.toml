@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "ghactions-audit"
+version = "0.1.0"
+description = "CLI tool that audits GitHub Actions workflows for security misconfigurations"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+dependencies = [
+    "click>=8.0",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+    "requests>=2.28",
+]
+
+[project.scripts]
+ghactions-audit = "ghactions_audit.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
