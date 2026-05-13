@@ -1,0 +1,52 @@
+name: Vulnerable CI
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+
+jobs:
+  build:
+    runs-on: self-hosted
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+
+      - name: Install deps
+        uses: some-random-org/install-action@main
+
+      - name: Comment on PR
+        run: |
+          echo "Processing PR: ${{ github.event.pull_request.title }}"
+          echo "RESULT=${{ github.event.pull_request.body }}" >> $GITHUB_ENV
+
+      - name: Print secret
+        run: echo ${{ secrets.MY_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: dist/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789:role/deploy
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-

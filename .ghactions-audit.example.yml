@@ -1,0 +1,24 @@
+# ghactions-audit sample configuration
+# Place as .ghactions-audit.yml in your repo root.
+
+# Rules to disable by ID
+ignore: []
+
+# Minimum severity: low | medium | high | critical
+severity: low
+
+# Glob patterns for workflow files to skip
+ignore_paths: []
+
+# Orgs treated as trusted (extends built-in: actions, github, docker, azure, etc.)
+trusted_orgs: []
+
+# Actions allowed to use mutable tag references (bypass GHA001)
+allow_unpinned: []
+
+# Per-rule overrides
+# rules:
+#   GHA006:
+#     severity: medium
+#   GHA008:
+#     enabled: false
