@@ -1,9 +1,9 @@
 """Workflow file scanner that applies rules to parsed YAML."""
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Set
+from typing import Dict, List, Optional, Set
 
 import yaml
 
@@ -20,12 +20,25 @@ class Finding:
     remediation: str
 
 
+@dataclass
+class ScanContext:
+    """Additional context passed to rules during scanning."""
+    trusted_orgs: Set[str] = field(default_factory=set)
+    allow_unpinned: Set[str] = field(default_factory=set)
+
+
 class WorkflowScanner:
     """Scans GitHub Actions workflow files against a set of security rules."""
 
-    def __init__(self, rules: list, ignore_rules: Set[str] = None):
+    def __init__(
+        self,
+        rules: list,
+        ignore_rules: Optional[Set[str]] = None,
+        context: Optional[ScanContext] = None,
+    ):
         self.rules = rules
         self.ignore_rules = ignore_rules or set()
+        self.context = context or ScanContext()
 
     def scan_file(self, path: Path) -> List[Finding]:
         """Scan a single workflow YAML file and return findings."""
@@ -77,7 +90,14 @@ class WorkflowScanner:
 
         findings = []
         for pattern in ("*.yml", "*.yaml"):
-            for wf_file in workflows_dir.glob(pattern):
+            for wf_file in sorted(workflows_dir.glob(pattern)):
                 findings.extend(self.scan_file(wf_file))
 
         return findings
+
+    def get_stats(self, findings: List[Finding]) -> Dict[str, int]:
+        """Aggregate finding counts by severity."""
+        counts: Dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        for f in findings:
+            counts[f.severity] = counts.get(f.severity, 0) + 1
+        return counts
