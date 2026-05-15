@@ -2,6 +2,8 @@
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/Lappy000/ghactions-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/Lappy000/ghactions-audit/actions/workflows/ci.yml)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
 Static analysis tool for GitHub Actions workflow files. Detects security misconfigurations including unpinned actions, script injection, dangerous triggers, OIDC token issues, cache poisoning vectors, and more. Outputs table, JSON, Markdown, or [SARIF](https://sarifweb.azurewebsites.net/) for GitHub Code Scanning integration.
 
