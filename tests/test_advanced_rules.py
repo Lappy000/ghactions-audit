@@ -4,14 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from ghactions_audit.scanner import WorkflowScanner
 from ghactions_audit.rules import get_all_rules
-from ghactions_audit.rules_advanced import (
-    GithubScriptInjectionRule,
-    WorkflowDispatchInjectionRule,
-    SecretExfiltrationRiskRule,
-)
-
+from ghactions_audit.scanner import WorkflowScanner
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

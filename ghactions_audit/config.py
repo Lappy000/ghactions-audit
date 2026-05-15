@@ -6,7 +6,7 @@ rule customization, severity overrides, and ignore patterns.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Optional
 
 import yaml
 
@@ -14,6 +14,7 @@ import yaml
 @dataclass
 class RuleConfig:
     """Configuration override for a specific rule."""
+
     enabled: bool = True
     severity: Optional[str] = None  # Override default severity
 
@@ -21,12 +22,13 @@ class RuleConfig:
 @dataclass
 class Config:
     """Audit configuration loaded from .ghactions-audit.yml."""
-    ignore_rules: Set[str] = field(default_factory=set)
-    ignore_paths: List[str] = field(default_factory=list)
+
+    ignore_rules: set[str] = field(default_factory=set)
+    ignore_paths: list[str] = field(default_factory=list)
     min_severity: str = "low"
-    rule_overrides: Dict[str, RuleConfig] = field(default_factory=dict)
-    trusted_orgs: Set[str] = field(default_factory=set)
-    allow_unpinned: Set[str] = field(default_factory=set)  # Actions allowed to use tags
+    rule_overrides: dict[str, RuleConfig] = field(default_factory=dict)
+    trusted_orgs: set[str] = field(default_factory=set)
+    allow_unpinned: set[str] = field(default_factory=set)  # Actions allowed to use tags
 
     @classmethod
     def load(cls, directory: Path) -> "Config":
@@ -89,9 +91,7 @@ class Config:
         if rule_id in self.ignore_rules:
             return False
         override = self.rule_overrides.get(rule_id)
-        if override and not override.enabled:
-            return False
-        return True
+        return not (override and not override.enabled)
 
     def get_severity_override(self, rule_id: str) -> Optional[str]:
         """Get severity override for a rule, if configured."""

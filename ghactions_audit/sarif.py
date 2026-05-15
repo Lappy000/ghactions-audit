@@ -5,10 +5,8 @@ GitHub's code scanning results via the upload-sarif action.
 """
 
 import json
-from typing import List
 
 from .scanner import Finding
-
 
 SARIF_VERSION = "2.1.0"
 SCHEMA_URI = "https://json.schemastore.org/sarif-2.1.0.json"
@@ -24,7 +22,7 @@ SEVERITY_TO_SARIF_LEVEL = {
 }
 
 
-def render_sarif(findings: List[Finding]) -> str:
+def render_sarif(findings: list[Finding]) -> str:
     """Render findings as a SARIF JSON string.
 
     Compatible with:
@@ -56,7 +54,7 @@ def render_sarif(findings: List[Finding]) -> str:
     return json.dumps(sarif, indent=2)
 
 
-def _build_rules(findings: List[Finding]) -> list:
+def _build_rules(findings: list[Finding]) -> list:
     """Build SARIF rule descriptors from unique rule IDs in findings."""
     seen = {}
     rules = []
@@ -65,24 +63,26 @@ def _build_rules(findings: List[Finding]) -> list:
         if f.rule_id in seen:
             continue
         seen[f.rule_id] = True
-        rules.append({
-            "id": f.rule_id,
-            "name": f.title,
-            "shortDescription": {"text": f.title},
-            "fullDescription": {"text": f.description},
-            "defaultConfiguration": {
-                "level": SEVERITY_TO_SARIF_LEVEL.get(f.severity, "warning")
-            },
-            "helpUri": f"{TOOL_URI}#rules",
-            "properties": {
-                "security-severity": _security_severity_score(f.severity),
-            },
-        })
+        rules.append(
+            {
+                "id": f.rule_id,
+                "name": f.title,
+                "shortDescription": {"text": f.title},
+                "fullDescription": {"text": f.description},
+                "defaultConfiguration": {
+                    "level": SEVERITY_TO_SARIF_LEVEL.get(f.severity, "warning")
+                },
+                "helpUri": f"{TOOL_URI}#rules",
+                "properties": {
+                    "security-severity": _security_severity_score(f.severity),
+                },
+            }
+        )
 
     return rules
 
 
-def _build_results(findings: List[Finding]) -> list:
+def _build_results(findings: list[Finding]) -> list:
     """Build SARIF result objects from findings."""
     results = []
 
@@ -110,7 +110,9 @@ def _build_results(findings: List[Finding]) -> list:
                 {
                     "description": {"text": f.remediation},
                 }
-            ] if f.remediation else [],
+            ]
+            if f.remediation
+            else [],
         }
         results.append(result)
 

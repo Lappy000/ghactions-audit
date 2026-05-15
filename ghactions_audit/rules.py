@@ -2,7 +2,6 @@
 
 import re
 from abc import ABC, abstractmethod
-from typing import List
 
 from .scanner import Finding
 
@@ -15,7 +14,7 @@ class Rule(ABC):
     severity: str = "medium"
 
     @abstractmethod
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         """Check a parsed workflow against this rule. Return findings."""
         ...
 
@@ -37,11 +36,11 @@ class UnpinnedActionsRule(Rule):
     # Pattern for uses: org/repo@ref where ref is NOT a 40-char hex SHA
     SHA_RE = re.compile(r"^[a-f0-9]{40}$")
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
         jobs = workflow.get("jobs", {}) or {}
 
-        for job_name, job in jobs.items():
+        for _job_name, job in jobs.items():
             if not isinstance(job, dict):
                 continue
             steps = job.get("steps", []) or []
@@ -60,26 +59,30 @@ class UnpinnedActionsRule(Rule):
                     if self.SHA_RE.match(ref):
                         continue
                     line = self._find_line(lines, re.escape(uses))
-                    findings.append(Finding(
-                        rule_id=self.rule_id,
-                        severity=self.severity,
-                        file=filepath,
-                        line=line,
-                        title=self.title,
-                        description=f"Action '{uses}' is pinned to a mutable tag/branch, not a commit SHA.",
-                        remediation=f"Pin to a full commit SHA: {uses.split('@')[0]}@<commit-sha>"
-                    ))
+                    findings.append(
+                        Finding(
+                            rule_id=self.rule_id,
+                            severity=self.severity,
+                            file=filepath,
+                            line=line,
+                            title=self.title,
+                            description=f"Action '{uses}' is pinned to a mutable tag/branch, not a commit SHA.",
+                            remediation=f"Pin to a full commit SHA: {uses.split('@')[0]}@<commit-sha>",
+                        )
+                    )
                 else:
                     line = self._find_line(lines, re.escape(uses))
-                    findings.append(Finding(
-                        rule_id=self.rule_id,
-                        severity="critical",
-                        file=filepath,
-                        line=line,
-                        title="Action without version reference",
-                        description=f"Action '{uses}' has no version pin at all.",
-                        remediation=f"Add a SHA pin: {uses}@<commit-sha>"
-                    ))
+                    findings.append(
+                        Finding(
+                            rule_id=self.rule_id,
+                            severity="critical",
+                            file=filepath,
+                            line=line,
+                            title="Action without version reference",
+                            description=f"Action '{uses}' has no version pin at all.",
+                            remediation=f"Add a SHA pin: {uses}@<commit-sha>",
+                        )
+                    )
         return findings
 
 
@@ -92,7 +95,7 @@ class DangerousTriggerRule(Rule):
 
     DANGEROUS_TRIGGERS = {"pull_request_target", "workflow_run"}
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
         triggers = workflow.get("on", workflow.get(True, {}))
 
@@ -112,15 +115,17 @@ class DangerousTriggerRule(Rule):
                 desc = f"Trigger '{trigger_name}' runs with write permissions on the base repo."
                 if checkout_found:
                     desc += " Combined with a checkout of PR code, this enables arbitrary code execution."
-                findings.append(Finding(
-                    rule_id=self.rule_id,
-                    severity=sev,
-                    file=filepath,
-                    line=line,
-                    title=self.title,
-                    description=desc,
-                    remediation=f"Avoid '{trigger_name}' or ensure it never checks out/executes untrusted PR code."
-                ))
+                findings.append(
+                    Finding(
+                        rule_id=self.rule_id,
+                        severity=sev,
+                        file=filepath,
+                        line=line,
+                        title=self.title,
+                        description=desc,
+                        remediation=f"Avoid '{trigger_name}' or ensure it never checks out/executes untrusted PR code.",
+                    )
+                )
         return findings
 
     def _has_pr_checkout(self, workflow: dict) -> bool:
@@ -129,7 +134,7 @@ class DangerousTriggerRule(Rule):
         for job in jobs.values():
             if not isinstance(job, dict):
                 continue
-            for step in (job.get("steps", []) or []):
+            for step in job.get("steps", []) or []:
                 if not isinstance(step, dict):
                     continue
                 uses = step.get("uses", "")
@@ -148,33 +153,37 @@ class OverlyPermissivePermissionsRule(Rule):
     title = "Overly permissive permissions"
     severity = "high"
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
 
         # Check top-level permissions
         perms = workflow.get("permissions")
         if perms is None:
             # No permissions block = default token permissions (potentially broad)
-            findings.append(Finding(
-                rule_id=self.rule_id,
-                severity="medium",
-                file=filepath,
-                line=0,
-                title="Missing permissions block",
-                description="Workflow has no top-level permissions block. The GITHUB_TOKEN gets default (potentially broad) permissions.",
-                remediation="Add a top-level 'permissions: {}' block and grant only what's needed per job."
-            ))
+            findings.append(
+                Finding(
+                    rule_id=self.rule_id,
+                    severity="medium",
+                    file=filepath,
+                    line=0,
+                    title="Missing permissions block",
+                    description="Workflow has no top-level permissions block. The GITHUB_TOKEN gets default (potentially broad) permissions.",
+                    remediation="Add a top-level 'permissions: {}' block and grant only what's needed per job.",
+                )
+            )
         elif perms == "write-all":
             line = self._find_line(lines, r"permissions:\s*write-all")
-            findings.append(Finding(
-                rule_id=self.rule_id,
-                severity="critical",
-                file=filepath,
-                line=line,
-                title=self.title,
-                description="Workflow grants write-all permissions to the GITHUB_TOKEN.",
-                remediation="Use least-privilege: specify only the permissions each job needs."
-            ))
+            findings.append(
+                Finding(
+                    rule_id=self.rule_id,
+                    severity="critical",
+                    file=filepath,
+                    line=line,
+                    title=self.title,
+                    description="Workflow grants write-all permissions to the GITHUB_TOKEN.",
+                    remediation="Use least-privilege: specify only the permissions each job needs.",
+                )
+            )
 
         # Check per-job permissions
         jobs = workflow.get("jobs", {}) or {}
@@ -184,15 +193,17 @@ class OverlyPermissivePermissionsRule(Rule):
             job_perms = job.get("permissions")
             if job_perms == "write-all":
                 line = self._find_line(lines, r"permissions:\s*write-all")
-                findings.append(Finding(
-                    rule_id=self.rule_id,
-                    severity="critical",
-                    file=filepath,
-                    line=line,
-                    title=f"Job '{job_name}' has write-all permissions",
-                    description=f"Job '{job_name}' grants write-all to the GITHUB_TOKEN.",
-                    remediation="Restrict to needed permissions only."
-                ))
+                findings.append(
+                    Finding(
+                        rule_id=self.rule_id,
+                        severity="critical",
+                        file=filepath,
+                        line=line,
+                        title=f"Job '{job_name}' has write-all permissions",
+                        description=f"Job '{job_name}' grants write-all to the GITHUB_TOKEN.",
+                        remediation="Restrict to needed permissions only.",
+                    )
+                )
 
         return findings
 
@@ -225,11 +236,9 @@ class ScriptInjectionRule(Rule):
         r"github\.event\.workflow_run\.head_commit\.message",
     ]
 
-    INJECTION_PATTERN = re.compile(
-        r"\$\{\{\s*(" + "|".join(DANGEROUS_CONTEXTS) + r")\s*\}\}"
-    )
+    INJECTION_PATTERN = re.compile(r"\$\{\{\s*(" + "|".join(DANGEROUS_CONTEXTS) + r")\s*\}\}")
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
         jobs = workflow.get("jobs", {}) or {}
 
@@ -248,15 +257,17 @@ class ScriptInjectionRule(Rule):
                     expr = match.group(1)
                     line = self._find_line(lines, re.escape(match.group(0)))
                     step_name = step.get("name", f"step {step_idx}")
-                    findings.append(Finding(
-                        rule_id=self.rule_id,
-                        severity=self.severity,
-                        file=filepath,
-                        line=line,
-                        title=self.title,
-                        description=f"Expression '${{{{ {expr} }}}}' in job '{job_name}', {step_name} can be attacker-controlled. If interpolated into a shell command, this enables arbitrary code execution.",
-                        remediation="Use an intermediate environment variable: env: TITLE: ${{ ... }} and reference $TITLE in the script."
-                    ))
+                    findings.append(
+                        Finding(
+                            rule_id=self.rule_id,
+                            severity=self.severity,
+                            file=filepath,
+                            line=line,
+                            title=self.title,
+                            description=f"Expression '${{{{ {expr} }}}}' in job '{job_name}', {step_name} can be attacker-controlled. If interpolated into a shell command, this enables arbitrary code execution.",
+                            remediation="Use an intermediate environment variable: env: TITLE: ${{ ... }} and reference $TITLE in the script.",
+                        )
+                    )
         return findings
 
 
@@ -267,21 +278,19 @@ class SecretsInLogsRule(Rule):
     title = "Potential secret exposure in logs"
     severity = "high"
 
-    ECHO_SECRET_RE = re.compile(
-        r"echo\s+.*\$\{\{\s*secrets\.[^}]+\}\}", re.IGNORECASE
-    )
+    ECHO_SECRET_RE = re.compile(r"echo\s+.*\$\{\{\s*secrets\.[^}]+\}\}", re.IGNORECASE)
     PRINT_SECRET_RE = re.compile(
         r"(print|printf|cat)\s+.*\$\{\{\s*secrets\.[^}]+\}\}", re.IGNORECASE
     )
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
         jobs = workflow.get("jobs", {}) or {}
 
         for job_name, job in jobs.items():
             if not isinstance(job, dict):
                 continue
-            for step in (job.get("steps", []) or []):
+            for step in job.get("steps", []) or []:
                 if not isinstance(step, dict):
                     continue
                 run_cmd = step.get("run", "")
@@ -290,15 +299,17 @@ class SecretsInLogsRule(Rule):
                 for pattern in (self.ECHO_SECRET_RE, self.PRINT_SECRET_RE):
                     for match in pattern.finditer(run_cmd):
                         line = self._find_line(lines, re.escape(match.group(0)[:40]))
-                        findings.append(Finding(
-                            rule_id=self.rule_id,
-                            severity=self.severity,
-                            file=filepath,
-                            line=line,
-                            title=self.title,
-                            description=f"Secret value may be printed to logs in job '{job_name}'. GitHub masks known secrets, but partial or transformed values can leak.",
-                            remediation="Never echo secrets directly. Use them only as environment variables passed to tools."
-                        ))
+                        findings.append(
+                            Finding(
+                                rule_id=self.rule_id,
+                                severity=self.severity,
+                                file=filepath,
+                                line=line,
+                                title=self.title,
+                                description=f"Secret value may be printed to logs in job '{job_name}'. GitHub masks known secrets, but partial or transformed values can leak.",
+                                remediation="Never echo secrets directly. Use them only as environment variables passed to tools.",
+                            )
+                        )
         return findings
 
 
@@ -310,18 +321,24 @@ class ThirdPartyActionRule(Rule):
     severity = "low"
 
     TRUSTED_ORGS = {
-        "actions", "github", "docker", "azure", "aws-actions",
-        "google-github-actions", "hashicorp", "codecov",
+        "actions",
+        "github",
+        "docker",
+        "azure",
+        "aws-actions",
+        "google-github-actions",
+        "hashicorp",
+        "codecov",
     }
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
         jobs = workflow.get("jobs", {}) or {}
 
-        for job_name, job in jobs.items():
+        for _job_name, job in jobs.items():
             if not isinstance(job, dict):
                 continue
-            for step in (job.get("steps", []) or []):
+            for step in job.get("steps", []) or []:
                 if not isinstance(step, dict):
                     continue
                 uses = step.get("uses", "")
@@ -330,15 +347,17 @@ class ThirdPartyActionRule(Rule):
                 org = uses.split("/")[0]
                 if org not in self.TRUSTED_ORGS:
                     line = self._find_line(lines, re.escape(uses))
-                    findings.append(Finding(
-                        rule_id=self.rule_id,
-                        severity=self.severity,
-                        file=filepath,
-                        line=line,
-                        title=self.title,
-                        description=f"Action '{uses}' is from non-verified org '{org}'. Review the action source before use.",
-                        remediation=f"Audit {uses.split('@')[0]} source code or fork it into your org."
-                    ))
+                    findings.append(
+                        Finding(
+                            rule_id=self.rule_id,
+                            severity=self.severity,
+                            file=filepath,
+                            line=line,
+                            title=self.title,
+                            description=f"Action '{uses}' is from non-verified org '{org}'. Review the action source before use.",
+                            remediation=f"Audit {uses.split('@')[0]} source code or fork it into your org.",
+                        )
+                    )
         return findings
 
 
@@ -349,16 +368,14 @@ class SelfHostedRunnerRule(Rule):
     title = "Self-hosted runner usage"
     severity = "high"
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
         triggers = workflow.get("on", workflow.get(True, {}))
         has_pr_trigger = False
 
         if isinstance(triggers, str):
             has_pr_trigger = triggers in ("pull_request", "pull_request_target")
-        elif isinstance(triggers, list):
-            has_pr_trigger = any(t in ("pull_request", "pull_request_target") for t in triggers)
-        elif isinstance(triggers, dict):
+        elif isinstance(triggers, (list, dict)):
             has_pr_trigger = any(t in ("pull_request", "pull_request_target") for t in triggers)
 
         jobs = workflow.get("jobs", {}) or {}
@@ -373,15 +390,17 @@ class SelfHostedRunnerRule(Rule):
                 desc = f"Job '{job_name}' runs on a self-hosted runner."
                 if has_pr_trigger:
                     desc += " Combined with PR triggers, this allows untrusted code execution on your infrastructure."
-                findings.append(Finding(
-                    rule_id=self.rule_id,
-                    severity=sev,
-                    file=filepath,
-                    line=line,
-                    title=self.title,
-                    description=desc,
-                    remediation="Use GitHub-hosted runners for untrusted code, or restrict self-hosted runners to protected branches."
-                ))
+                findings.append(
+                    Finding(
+                        rule_id=self.rule_id,
+                        severity=sev,
+                        file=filepath,
+                        line=line,
+                        title=self.title,
+                        description=desc,
+                        remediation="Use GitHub-hosted runners for untrusted code, or restrict self-hosted runners to protected branches.",
+                    )
+                )
         return findings
 
 
@@ -392,7 +411,7 @@ class UnsafeDefaultsRule(Rule):
     title = "Unsafe execution defaults"
     severity = "medium"
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
         jobs = workflow.get("jobs", {}) or {}
 
@@ -402,32 +421,36 @@ class UnsafeDefaultsRule(Rule):
             # Check for continue-on-error at job level
             if job.get("continue-on-error") is True:
                 line = self._find_line(lines, r"continue-on-error:\s*true")
-                findings.append(Finding(
-                    rule_id=self.rule_id,
-                    severity="medium",
-                    file=filepath,
-                    line=line,
-                    title=f"Job '{job_name}' ignores failures",
-                    description=f"Job '{job_name}' has continue-on-error: true. Security-critical steps may fail silently.",
-                    remediation="Remove continue-on-error or limit it to non-security-critical steps."
-                ))
+                findings.append(
+                    Finding(
+                        rule_id=self.rule_id,
+                        severity="medium",
+                        file=filepath,
+                        line=line,
+                        title=f"Job '{job_name}' ignores failures",
+                        description=f"Job '{job_name}' has continue-on-error: true. Security-critical steps may fail silently.",
+                        remediation="Remove continue-on-error or limit it to non-security-critical steps.",
+                    )
+                )
 
-            for step in (job.get("steps", []) or []):
+            for step in job.get("steps", []) or []:
                 if not isinstance(step, dict):
                     continue
                 # Check for steps that disable fail-fast
                 if step.get("continue-on-error") is True:
                     step_name = step.get("name", "unnamed step")
                     line = self._find_line(lines, r"continue-on-error:\s*true")
-                    findings.append(Finding(
-                        rule_id=self.rule_id,
-                        severity="low",
-                        file=filepath,
-                        line=line,
-                        title=f"Step '{step_name}' ignores failures",
-                        description=f"Step may fail silently. Ensure this doesn't mask security issues.",
-                        remediation="Only use continue-on-error for non-critical optional steps."
-                    ))
+                    findings.append(
+                        Finding(
+                            rule_id=self.rule_id,
+                            severity="low",
+                            file=filepath,
+                            line=line,
+                            title=f"Step '{step_name}' ignores failures",
+                            description="Step may fail silently. Ensure this doesn't mask security issues.",
+                            remediation="Only use continue-on-error for non-critical optional steps.",
+                        )
+                    )
         return findings
 
 
@@ -438,7 +461,7 @@ class ArtifactPoisoningRule(Rule):
     title = "Artifact trust boundary issue"
     severity = "medium"
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
         jobs = workflow.get("jobs", {}) or {}
         uploaders = set()
@@ -447,7 +470,7 @@ class ArtifactPoisoningRule(Rule):
         for job_name, job in jobs.items():
             if not isinstance(job, dict):
                 continue
-            for step in (job.get("steps", []) or []):
+            for step in job.get("steps", []) or []:
                 if not isinstance(step, dict):
                     continue
                 uses = step.get("uses", "")
@@ -458,23 +481,25 @@ class ArtifactPoisoningRule(Rule):
                     with_block = step.get("with", {}) or {}
                     if not with_block.get("name"):
                         line = self._find_line(lines, r"download-artifact")
-                        findings.append(Finding(
-                            rule_id=self.rule_id,
-                            severity="medium",
-                            file=filepath,
-                            line=line,
-                            title="Unnamed artifact download",
-                            description=f"Job '{job_name}' downloads artifacts without specifying a name. Any job in the workflow run can overwrite artifacts.",
-                            remediation="Always specify the 'name' parameter when downloading artifacts."
-                        ))
+                        findings.append(
+                            Finding(
+                                rule_id=self.rule_id,
+                                severity="medium",
+                                file=filepath,
+                                line=line,
+                                title="Unnamed artifact download",
+                                description=f"Job '{job_name}' downloads artifacts without specifying a name. Any job in the workflow run can overwrite artifacts.",
+                                remediation="Always specify the 'name' parameter when downloading artifacts.",
+                            )
+                        )
 
         return findings
 
 
 def get_all_rules() -> list:
     """Return instances of all available audit rules."""
-    from .rules_extended import get_extended_rules
     from .rules_advanced import get_advanced_rules
+    from .rules_extended import get_extended_rules
 
     base_rules = [
         UnpinnedActionsRule(),

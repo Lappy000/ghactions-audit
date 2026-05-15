@@ -1,12 +1,9 @@
 """Report rendering for audit findings."""
 
 import json
-import sys
-from typing import List
 
 from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
 from rich.text import Text
 
 from .scanner import Finding
@@ -28,7 +25,7 @@ SEVERITY_ICONS = {
 }
 
 
-def render_report(findings: List[Finding], fmt: str = "table") -> None:
+def render_report(findings: list[Finding], fmt: str = "table") -> None:
     """Render findings to stdout."""
     if not findings:
         console.print("[green]No security issues found.[/green]")
@@ -50,7 +47,7 @@ def render_report(findings: List[Finding], fmt: str = "table") -> None:
     console.print(f"\nTotal: {len(findings)} findings ({', '.join(summary_parts)})")
 
 
-def _render_table(findings: List[Finding]) -> None:
+def _render_table(findings: list[Finding]) -> None:
     """Render findings as a rich table."""
     table = Table(title="GitHub Actions Security Audit", show_lines=True)
     table.add_column("Sev", width=4, justify="center")
@@ -72,7 +69,7 @@ def _render_table(findings: List[Finding]) -> None:
     console.print(table)
 
 
-def _render_markdown(findings: List[Finding]) -> None:
+def _render_markdown(findings: list[Finding]) -> None:
     """Render findings as Markdown for CI comments."""
     print("## GitHub Actions Security Audit\n")
     print(f"Found **{len(findings)}** issues.\n")
@@ -80,10 +77,12 @@ def _render_markdown(findings: List[Finding]) -> None:
     print("|----------|------|------|------|-------|-------------|")
     for f in sorted(findings, key=lambda x: _sev_key(x.severity)):
         file_short = _truncate_path(f.file)
-        print(f"| {f.severity.upper()} | {f.rule_id} | {file_short} | {f.line or '-'} | {f.description} | {f.remediation} |")
+        print(
+            f"| {f.severity.upper()} | {f.rule_id} | {file_short} | {f.line or '-'} | {f.description} | {f.remediation} |"
+        )
 
 
-def render_json_report(findings: List[Finding]) -> None:
+def render_json_report(findings: list[Finding]) -> None:
     """Render findings as JSON."""
     output = {
         "total": len(findings),
@@ -98,7 +97,7 @@ def render_json_report(findings: List[Finding]) -> None:
                 "remediation": f.remediation,
             }
             for f in findings
-        ]
+        ],
     }
     print(json.dumps(output, indent=2))
 

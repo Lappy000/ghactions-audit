@@ -8,11 +8,11 @@ from typing import Optional
 import click
 from rich.console import Console
 
-from .scanner import WorkflowScanner
-from .rules import get_all_rules
-from .report import render_report, render_json_report
-from .sarif import render_sarif
 from .config import Config
+from .report import render_json_report, render_report
+from .rules import get_all_rules
+from .sarif import render_sarif
+from .scanner import WorkflowScanner
 
 console = Console()
 
@@ -22,24 +22,30 @@ SEVERITY_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 @click.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option(
-    "--format", "-f", "output_format",
+    "--format",
+    "-f",
+    "output_format",
     type=click.Choice(["table", "json", "markdown", "sarif"]),
     default="table",
     help="Output format.",
 )
 @click.option(
-    "--severity", "-s",
+    "--severity",
+    "-s",
     type=click.Choice(["low", "medium", "high", "critical"]),
     default=None,
     help="Minimum severity to report.",
 )
 @click.option(
-    "--ignore", "-i",
+    "--ignore",
+    "-i",
     multiple=True,
     help="Rule IDs to ignore (can be specified multiple times).",
 )
 @click.option(
-    "--config", "-c", "config_path",
+    "--config",
+    "-c",
+    "config_path",
     type=click.Path(exists=True),
     default=None,
     help="Path to config file (default: .ghactions-audit.yml in target dir).",
@@ -122,8 +128,10 @@ def main(
     # Apply path ignores from config
     if config.ignore_paths:
         import fnmatch
+
         workflow_files = [
-            wf for wf in workflow_files
+            wf
+            for wf in workflow_files
             if not any(fnmatch.fnmatch(str(wf), pat) for pat in config.ignore_paths)
         ]
 
@@ -186,7 +194,7 @@ def _handle_fix(workflow_files: list, dry_run: bool = False) -> None:
             fixes = fix_unpinned_actions(wf, token=token)
             if fixes:
                 console.print(f"[green]{wf}:[/green]")
-                for old_ref, new_ref, sha in fixes:
+                for old_ref, _new_ref, sha in fixes:
                     console.print(f"  {old_ref} -> {sha[:12]}...")
             else:
                 console.print(f"[dim]{wf}: no fixes applied[/dim]")

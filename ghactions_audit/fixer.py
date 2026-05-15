@@ -5,21 +5,16 @@ Generates patched workflow files or unified diffs.
 """
 
 import re
-import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 import requests
-import yaml
-
-from .scanner import Finding
-
 
 # GitHub API base
 GITHUB_API = "https://api.github.com"
 
 # Cache resolved SHAs to avoid redundant API calls
-_sha_cache: Dict[str, str] = {}
+_sha_cache: dict[str, str] = {}
 
 
 def resolve_action_sha(action_ref: str, token: Optional[str] = None) -> Optional[str]:
@@ -93,7 +88,7 @@ def fix_unpinned_actions(
     filepath: Path,
     token: Optional[str] = None,
     dry_run: bool = False,
-) -> List[Tuple[str, str, str]]:
+) -> list[tuple[str, str, str]]:
     """Fix unpinned action references in a workflow file.
 
     Args:
@@ -131,7 +126,7 @@ def fix_unpinned_actions(
                 old_ref = f"{action_path}@{tag}"
                 new_ref = f"{action_path}@{sha}"
                 comment = f"  # {tag}"
-                new_line = line[:match.start()] + f"{prefix}{new_ref}{comment}\n"
+                new_line = line[: match.start()] + f"{prefix}{new_ref}{comment}\n"
                 new_lines.append(new_line)
                 fixes.append((old_ref, new_ref, sha))
             else:
@@ -180,7 +175,7 @@ def generate_diff(
                     prefix = match.group(1)
                     new_ref = f"{action_path}@{sha}"
                     comment = f"  # {tag}"
-                    new_line = line[:match.start()] + f"{prefix}{new_ref}{comment}\n"
+                    new_line = line[: match.start()] + f"{prefix}{new_ref}{comment}\n"
                     new_lines.append(new_line)
                     continue
         new_lines.append(line)

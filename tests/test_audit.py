@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from ghactions_audit.scanner import WorkflowScanner, Finding
-from ghactions_audit.rules import get_all_rules
 from ghactions_audit.config import Config
+from ghactions_audit.rules import get_all_rules
 from ghactions_audit.sarif import render_sarif
+from ghactions_audit.scanner import WorkflowScanner
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -128,6 +128,7 @@ class TestConfig:
 
     def test_severity_override(self):
         from ghactions_audit.config import RuleConfig
+
         config = Config()
         config.rule_overrides = {"GHA006": RuleConfig(severity="high")}
         assert config.get_severity_override("GHA006") == "high"
@@ -180,9 +181,23 @@ class TestScanner:
     def test_ignore_rules(self, vulnerable_file):
         scanner = WorkflowScanner(
             rules=get_all_rules(),
-            ignore_rules={"GHA001", "GHA002", "GHA003", "GHA004", "GHA005",
-                          "GHA006", "GHA007", "GHA008", "GHA009", "GHA010",
-                          "GHA011", "GHA012", "GHA013", "GHA014", "GHA015"}
+            ignore_rules={
+                "GHA001",
+                "GHA002",
+                "GHA003",
+                "GHA004",
+                "GHA005",
+                "GHA006",
+                "GHA007",
+                "GHA008",
+                "GHA009",
+                "GHA010",
+                "GHA011",
+                "GHA012",
+                "GHA013",
+                "GHA014",
+                "GHA015",
+            },
         )
         findings = scanner.scan_file(vulnerable_file)
         assert len(findings) == 0

@@ -7,10 +7,9 @@ Covers:
 """
 
 import re
-from typing import List
 
-from .scanner import Finding
 from .rules import Rule
+from .scanner import Finding
 
 
 class GithubScriptInjectionRule(Rule):
@@ -40,11 +39,9 @@ class GithubScriptInjectionRule(Rule):
         r"github\.event\.commits\.\*\.message",
     ]
 
-    INJECTION_PATTERN = re.compile(
-        r"\$\{\{\s*(" + "|".join(DANGEROUS_CONTEXTS) + r")\s*\}\}"
-    )
+    INJECTION_PATTERN = re.compile(r"\$\{\{\s*(" + "|".join(DANGEROUS_CONTEXTS) + r")\s*\}\}")
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
         jobs = workflow.get("jobs", {}) or {}
 
@@ -68,24 +65,26 @@ class GithubScriptInjectionRule(Rule):
                     expr = match.group(1)
                     line = self._find_line(lines, re.escape(match.group(0)))
                     step_name = step.get("name", f"step {step_idx}")
-                    findings.append(Finding(
-                        rule_id=self.rule_id,
-                        severity=self.severity,
-                        file=filepath,
-                        line=line,
-                        title=self.title,
-                        description=(
-                            f"Expression '${{{{ {expr} }}}}' in job '{job_name}', "
-                            f"{step_name} is interpolated into a github-script. "
-                            f"Attacker-controlled data enables arbitrary JS execution "
-                            f"with the GITHUB_TOKEN."
-                        ),
-                        remediation=(
-                            "Pass untrusted data via an environment variable or "
-                            "action input instead of direct interpolation in the "
-                            "script body. Use core.getInput() or process.env."
-                        ),
-                    ))
+                    findings.append(
+                        Finding(
+                            rule_id=self.rule_id,
+                            severity=self.severity,
+                            file=filepath,
+                            line=line,
+                            title=self.title,
+                            description=(
+                                f"Expression '${{{{ {expr} }}}}' in job '{job_name}', "
+                                f"{step_name} is interpolated into a github-script. "
+                                f"Attacker-controlled data enables arbitrary JS execution "
+                                f"with the GITHUB_TOKEN."
+                            ),
+                            remediation=(
+                                "Pass untrusted data via an environment variable or "
+                                "action input instead of direct interpolation in the "
+                                "script body. Use core.getInput() or process.env."
+                            ),
+                        )
+                    )
         return findings
 
 
@@ -101,15 +100,11 @@ class WorkflowDispatchInjectionRule(Rule):
     title = "Unsafe workflow_dispatch input in shell command"
     severity = "high"
 
-    INPUT_PATTERN = re.compile(
-        r"\$\{\{\s*github\.event\.inputs\.(\w+)\s*\}\}"
-    )
+    INPUT_PATTERN = re.compile(r"\$\{\{\s*github\.event\.inputs\.(\w+)\s*\}\}")
     # Also match the newer inputs context
-    INPUTS_CONTEXT_PATTERN = re.compile(
-        r"\$\{\{\s*inputs\.(\w+)\s*\}\}"
-    )
+    INPUTS_CONTEXT_PATTERN = re.compile(r"\$\{\{\s*inputs\.(\w+)\s*\}\}")
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
 
         # Only check workflows with workflow_dispatch trigger
@@ -135,34 +130,34 @@ class WorkflowDispatchInjectionRule(Rule):
                         input_name = match.group(1)
                         line = self._find_line(lines, re.escape(match.group(0)))
                         step_name = step.get("name", f"step {step_idx}")
-                        findings.append(Finding(
-                            rule_id=self.rule_id,
-                            severity=self.severity,
-                            file=filepath,
-                            line=line,
-                            title=self.title,
-                            description=(
-                                f"Input '{input_name}' is interpolated directly into a "
-                                f"shell command in job '{job_name}', {step_name}. "
-                                f"Any user with write access can inject arbitrary "
-                                f"shell commands via workflow_dispatch."
-                            ),
-                            remediation=(
-                                "Pass the input via an environment variable: "
-                                f"env: INPUT_{input_name.upper()}: "
-                                "${{ github.event.inputs." + input_name + " }} "
-                                f"and reference $INPUT_{input_name.upper()} in the script."
-                            ),
-                        ))
+                        findings.append(
+                            Finding(
+                                rule_id=self.rule_id,
+                                severity=self.severity,
+                                file=filepath,
+                                line=line,
+                                title=self.title,
+                                description=(
+                                    f"Input '{input_name}' is interpolated directly into a "
+                                    f"shell command in job '{job_name}', {step_name}. "
+                                    f"Any user with write access can inject arbitrary "
+                                    f"shell commands via workflow_dispatch."
+                                ),
+                                remediation=(
+                                    "Pass the input via an environment variable: "
+                                    f"env: INPUT_{input_name.upper()}: "
+                                    "${{ github.event.inputs." + input_name + " }} "
+                                    f"and reference $INPUT_{input_name.upper()} in the script."
+                                ),
+                            )
+                        )
         return findings
 
     def _has_workflow_dispatch(self, triggers) -> bool:
         """Check if workflow_dispatch is among triggers."""
         if isinstance(triggers, str):
             return triggers == "workflow_dispatch"
-        elif isinstance(triggers, list):
-            return "workflow_dispatch" in triggers
-        elif isinstance(triggers, dict):
+        elif isinstance(triggers, (list, dict)):
             return "workflow_dispatch" in triggers
         return False
 
@@ -181,11 +176,9 @@ class SecretExfiltrationRiskRule(Rule):
 
     UNTRUSTED_TRIGGERS = {"pull_request_target", "workflow_run"}
 
-    SECRETS_PATTERN = re.compile(
-        r"\$\{\{\s*secrets\.(\w+)\s*\}\}"
-    )
+    SECRETS_PATTERN = re.compile(r"\$\{\{\s*secrets\.(\w+)\s*\}\}")
 
-    def check(self, workflow: dict, lines: list, filepath: str) -> List[Finding]:
+    def check(self, workflow: dict, lines: list, filepath: str) -> list[Finding]:
         findings = []
 
         # Check if this workflow uses an untrusted trigger
@@ -225,26 +218,28 @@ class SecretExfiltrationRiskRule(Rule):
                             continue  # GITHUB_TOKEN is expected
                         line = self._find_line(lines, re.escape(match.group(0)))
                         step_name = step.get("name", f"step {step_idx}")
-                        findings.append(Finding(
-                            rule_id=self.rule_id,
-                            severity=self.severity,
-                            file=filepath,
-                            line=line,
-                            title=self.title,
-                            description=(
-                                f"Secret '{secret_name}' is used in job '{job_name}', "
-                                f"{step_name} which is triggered by "
-                                f"{', '.join(untrusted)} and runs untrusted code. "
-                                f"An attacker can exfiltrate the secret via a "
-                                f"malicious PR."
-                            ),
-                            remediation=(
-                                "Move secret-dependent steps to a separate job "
-                                "that does NOT checkout PR code, or use a two-workflow "
-                                "pattern where the privileged workflow only runs "
-                                "trusted code."
-                            ),
-                        ))
+                        findings.append(
+                            Finding(
+                                rule_id=self.rule_id,
+                                severity=self.severity,
+                                file=filepath,
+                                line=line,
+                                title=self.title,
+                                description=(
+                                    f"Secret '{secret_name}' is used in job '{job_name}', "
+                                    f"{step_name} which is triggered by "
+                                    f"{', '.join(untrusted)} and runs untrusted code. "
+                                    f"An attacker can exfiltrate the secret via a "
+                                    f"malicious PR."
+                                ),
+                                remediation=(
+                                    "Move secret-dependent steps to a separate job "
+                                    "that does NOT checkout PR code, or use a two-workflow "
+                                    "pattern where the privileged workflow only runs "
+                                    "trusted code."
+                                ),
+                            )
+                        )
                         break  # One finding per step is enough
                     else:
                         continue
