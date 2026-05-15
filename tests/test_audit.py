@@ -182,7 +182,7 @@ class TestScanner:
             rules=get_all_rules(),
             ignore_rules={"GHA001", "GHA002", "GHA003", "GHA004", "GHA005",
                           "GHA006", "GHA007", "GHA008", "GHA009", "GHA010",
-                          "GHA011", "GHA012"}
+                          "GHA011", "GHA012", "GHA013", "GHA014", "GHA015"}
         )
         findings = scanner.scan_file(vulnerable_file)
         assert len(findings) == 0

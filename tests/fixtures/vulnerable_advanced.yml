@@ -1,0 +1,51 @@
+name: Advanced Vulnerable CI
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      deploy_env:
+        description: "Target environment"
+        required: true
+      version:
+        description: "Version to deploy"
+        required: true
+
+jobs:
+  github-script-injection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        name: Greet PR author
+        with:
+          script: |
+            const title = `${{ github.event.pull_request.title }}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Thanks for: ${title}`
+            });
+
+  dispatch-injection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to environment
+        run: |
+          echo "Deploying to ${{ github.event.inputs.deploy_env }}"
+          ./scripts/deploy.sh --version ${{ inputs.version }}
+
+  secret-exfiltration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Build with secrets
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          npm install
+          npm run build

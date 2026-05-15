@@ -474,6 +474,7 @@ class ArtifactPoisoningRule(Rule):
 def get_all_rules() -> list:
     """Return instances of all available audit rules."""
     from .rules_extended import get_extended_rules
+    from .rules_advanced import get_advanced_rules
 
     base_rules = [
         UnpinnedActionsRule(),
@@ -486,4 +487,4 @@ def get_all_rules() -> list:
         UnsafeDefaultsRule(),
         ArtifactPoisoningRule(),
     ]
-    return base_rules + get_extended_rules()
+    return base_rules + get_extended_rules() + get_advanced_rules()

@@ -77,6 +77,9 @@ ghactions-audit . --no-exit-code
 | GHA010 | critical | Environment variable injection via `GITHUB_ENV`/`GITHUB_PATH` |
 | GHA011 | high | Cache poisoning risk on PR-triggered workflows |
 | GHA012 | high | OIDC token (`id-token: write`) misconfiguration |
+| GHA013 | critical | Script injection via `actions/github-script` with untrusted inputs |
+| GHA014 | high | Unsafe `workflow_dispatch` inputs interpolated into shell commands |
+| GHA015 | critical | Secrets accessible in jobs triggered by untrusted events |
 
 ## Configuration
 
